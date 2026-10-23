@@ -619,9 +619,10 @@ function winLabel(title) {
 }
 
 function showWindows() {
+  const panels = windows.some(w => w.kind === 'agent');
   const rows = windows.map(w => `<button class="opt ${w.id === currentWindow ? 'cur' : ''}" data-win="${esc(w.id)}">
-    <span class="tag">${KIND_TAG[w.kind] || ''}</span><span class="lbl">${esc(winLabel(w.title || w.id).name)}${winLabel(w.title || '').file ? `<span class="sub">${esc(winLabel(w.title).file)}</span>` : ''}</span></button>`).join('');
-  openSheet('windows', `<h3>切换 Cursor 窗口</h3>${rows || '<div class="hint">没有找到窗口</div>'}`);
+    <span class="tag">${KIND_TAG[w.kind] || ''}</span><span class="lbl">${esc(panels ? (w.title || w.id) : winLabel(w.title || w.id).name)}${!panels && winLabel(w.title || '').file ? `<span class="sub">${esc(winLabel(w.title).file)}</span>` : ''}</span></button>`).join('');
+  openSheet('windows', `<h3>${panels ? '切换面板' : '切换 Cursor 窗口'}</h3>${rows || '<div class="hint">没有找到窗口</div>'}`);
 }
 $('title').onclick = () => { send({ t: 'windows' }); showWindows(); };
 
