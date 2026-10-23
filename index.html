@@ -1,0 +1,1359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cursor Remote">
+<meta name="theme-color" content="#1e1e1e">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Cursor Remote</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: #1e1e1e; color: #d4d4d4; font: 15px/1.55 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  body { position: fixed; left: 0; top: 0; width: 100%; height: 100dvh; display: flex; flex-direction: column; overflow: hidden;
+         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  button, select, textarea, input { font: inherit; color: #e6e6e6; background: #2d2d2d; border: 1px solid #3c3c3c; border-radius: 8px; }
+  button { padding: 6px 12px; white-space: nowrap; cursor: pointer; }
+  button:active { filter: brightness(1.3); }
+  button.on, button.primary { background: #0e639c; border-color: #1177bb; color: #fff; }
+  [hidden] { display: none !important; }
+
+  header { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #252526; border-bottom: 1px solid #333; min-width: 0; }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: #c33; flex: none; }
+  #dot.ok { background: #3c3; }
+  #title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; background: none; border: none; padding: 4px 2px; text-align: left; color: #ccc; font-size: 14px; }
+  #title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #title::after { content: "▾"; color: #888; flex: none; }
+  .seg { display: flex; flex: none; border: 1px solid #3c3c3c; border-radius: 8px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; padding: 5px 12px; background: #2d2d2d; }
+  .seg button.on { background: #0e639c; }
+  #menuBtn { flex: none; padding: 5px 10px; }
+
+  main { flex: 1; min-height: 0; position: relative; }
+  .view { position: absolute; inset: 0; display: none; flex-direction: column; min-width: 0; }
+  .view.active { display: flex; }
+
+  /* chat view */
+  #list { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 10px 12px 16px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #older { display: block; margin: 0 auto 10px; font-size: 13px; color: #aaa; background: transparent; }
+  .msg { margin: 8px 0; min-width: 0; overflow-wrap: anywhere; }
+  .human { display: flex; justify-content: flex-end; }
+  .human .bubble { max-width: 88%; background: #264f78; color: #fff; padding: 8px 12px; border-radius: 14px 14px 4px 14px; white-space: pre-wrap; }
+  .assistant { padding: 2px 2px; }
+  .assistant p { margin: 0 0 .6em; }
+  .assistant ul, .assistant ol { margin: 0 0 .6em; padding-left: 1.3em; }
+  .assistant h1, .assistant h2, .assistant h3, .assistant h4 { font-size: 1.05em; margin: .8em 0 .4em; }
+  .assistant code { background: #333; padding: 1px 4px; border-radius: 4px; font: 13px ui-monospace, Menlo, monospace; }
+  .assistant pre { background: #111; padding: 8px 10px; border-radius: 8px; overflow-x: auto; font: 12.5px/1.45 ui-monospace, Menlo, monospace; white-space: pre; }
+  .assistant table { border-collapse: collapse; display: block; overflow-x: auto; font-size: 13px; margin: 0 0 .6em; }
+  .assistant td, .assistant th { border: 1px solid #444; padding: 4px 6px; }
+  .assistant blockquote { margin: 0 0 .6em; padding-left: 10px; border-left: 3px solid #555; color: #aaa; }
+  .tool { font: 12.5px/1.4 ui-monospace, Menlo, monospace; color: #9da5b4; background: #252526; border: 1px solid #303030; border-radius: 8px; padding: 6px 9px; }
+  .tool .txt { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .thinking, .other { font-size: 12px; color: #777; padding-left: 2px; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .btns button { font-size: 13px; padding: 5px 10px; }
+  .btns button.primary { font-weight: 600; }
+  #empty { color: #888; text-align: center; margin-top: 30vh; padding: 0 20px; }
+  #toBottom { position: absolute; right: 14px; bottom: 12px; border-radius: 20px; padding: 6px 12px; background: #333d; display: none; }
+  #actionBar { flex: none; display: none; gap: 8px; flex-wrap: wrap; padding: 8px 12px; background: #2a2d2e; border-top: 1px solid #333; }
+  #actionBar.show { display: flex; }
+  #actionBar button { flex: 1; padding: 9px; font-weight: 600; }
+  #queueBar { flex: none; display: none; flex-direction: column; gap: 6px; padding: 7px 12px; background: #23272e; border-top: 1px solid #333; max-height: 34vh; overflow-y: auto; }
+  #queueBar.show { display: flex; }
+  #qnBar { flex: none; display: none; flex-direction: column; gap: 8px; padding: 10px 12px; background: #2a2620; border-top: 2px solid #e5c07b; max-height: 48vh; overflow-y: auto; }
+  #qnBar.show { display: flex; }
+  #qnBar .qnHead { font-size: 12.5px; color: #e5c07b; font-weight: 600; }
+  #qnBar .qnQ { font-size: 14.5px; color: #eee; white-space: pre-wrap; }
+  #qnBar .qnOpts { display: flex; flex-direction: column; gap: 6px; }
+  #qnBar .qnOpt { text-align: left; font-size: 14px; padding: 8px 10px; display: flex; gap: 8px; }
+  #qnBar .qnOpt b { color: #999; flex: none; }
+  #qnBar .qnOpt.on { border-color: #e5c07b; background: #3a3220; }
+  #qnBar .qnOpt.on b { color: #e5c07b; }
+  #qnBar .qnFree { display: flex; gap: 6px; }
+  #qnBar .qnFree input { flex: 1; min-width: 0; font-size: 14px; }
+  #qnBar .qnFree.on input { border-color: #e5c07b; }
+  #qnBar .qnAct { display: flex; gap: 8px; justify-content: flex-end; }
+  #qnBar .qnAct button { padding: 7px 16px; }
+  #qnBar .qnAct .primary { background: #0e639c; border-color: #1177bb; color: #fff; font-weight: 600; }
+  #qnBar .qnAct .primary:disabled { opacity: .45; }
+  #queueBar .run { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #9cc8ff; }
+  #queueBar .run span { flex: 1; min-width: 0; }
+  #queueBar .run i { width: 8px; height: 8px; border-radius: 50%; background: #4af; flex: none; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  #queueBar .qh { font-size: 12px; color: #999; }
+  #queueBar .qh.fold { background: none; border: none; padding: 2px 0; text-align: left; color: #9cc8ff; font-size: 12.5px; }
+  #queueBar .q { display: flex; align-items: center; gap: 6px; font-size: 13.5px; }
+  #queueBar .q .qt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccc; }
+  #queueBar .q .qt::before { content: "○ "; color: #777; }
+  #queueBar .q .qt.sa::before { content: "⇢ "; color: #4af; }
+  #queueBar .run.sub { color: #e5c07b; }
+  #queueBar button { font-size: 12px; padding: 3px 9px; flex: none; }
+
+  /* screen view */
+  .tools { flex: none; display: flex; gap: 6px; padding: 6px 8px; overflow-x: auto; scrollbar-width: none; background: #252526; border-bottom: 1px solid #333; min-width: 0; }
+  .tools::-webkit-scrollbar { display: none; }
+  #view { flex: 1; min-height: 0; overflow: auto; background: #111; -webkit-overflow-scrolling: touch; }
+  #stage { position: relative; overflow: hidden; margin: 0 auto; }
+  #screen { position: absolute; left: 0; top: 0; max-width: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-x pan-y; }
+  #view.scroll #screen { touch-action: none; }
+  #ripple { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 2px solid #4af; pointer-events: none; opacity: 0; transition: opacity .4s; }
+
+  /* composer */
+  footer { flex: none; background: #252526; border-top: 1px solid #333; padding: 6px 10px 8px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  #chatTools { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+  #chatTools::-webkit-scrollbar { display: none; }
+  #chatTools button { font-size: 12.5px; padding: 3px 10px; border-radius: 14px; flex: none; white-space: nowrap; }
+  #chatTools #pickModel { flex: 0 1 auto; min-width: 84px; overflow: hidden; text-overflow: ellipsis; }
+  .row { display: flex; gap: 8px; min-width: 0; align-items: flex-end; }
+  textarea { flex: 1; min-width: 0; min-height: 40px; max-height: 32vh; padding: 9px 10px; resize: none; font-size: 16px; line-height: 1.35; }
+  #img { flex: none; height: 40px; width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; color: #bbb; }
+  #mic { display: none; }
+  body.voice #mic { flex: none; height: 40px; width: 40px; padding: 0; display: flex; align-items: center; justify-content: center; color: #bbb; }
+  #mic.on { color: #fff; background: #c33; border-color: #e55; animation: pulse 1.2s ease-in-out infinite; }
+  #send { flex: none; height: 40px; padding: 0 16px; background: #0e639c; border-color: #1177bb; color: #fff; font-weight: 600; }
+  #msg { font-size: 12px; color: #888; min-height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #msg.err { color: #f77; }
+
+  /* bottom sheet */
+  #shade { position: fixed; inset: 0; z-index: 30; background: #0008; display: none; }
+  #shade.open { display: block; }
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 31; background: #252526; border-radius: 14px 14px 0 0; padding: 12px 12px calc(14px + env(safe-area-inset-bottom)); max-height: 75dvh; overflow-y: auto; transform: translateY(105%); transition: transform .2s; }
+  #sheet.open { transform: none; }
+  #sheet h3 { margin: 2px 4px 10px; font-size: 15px; color: #ccc; font-weight: 600; }
+  .opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 11px 12px; margin-bottom: 6px; white-space: normal; }
+  .opt .lbl { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .opt .sub { display: block; font-size: 12px; color: #888; margin-top: 2px; }
+  .opt .tag { flex: none; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: #3a3d41; color: #bbb; }
+  .opt.cur { border-color: #1177bb; }
+  .opt.cur::after { content: "✓"; color: #4af; flex: none; }
+  .askQ { white-space: pre-line; line-height: 1.5; margin: 6px 4px 16px !important; color: #e6e6e6 !important; }
+  .askBtns { display: flex; gap: 10px; }
+  .askBtns button { flex: 1; padding: 12px; font-size: 15px; }
+  button.danger { background: #a1260d; border-color: #c4321a; color: #fff; font-weight: 600; }
+  .optRow { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
+  .optRow .opt { margin-bottom: 0; flex: 1; min-width: 0; }
+  .paramBtn { flex: none; padding: 0 12px; font-size: 13px; }
+  .switch { flex: none; width: 36px; height: 20px; border-radius: 10px; background: #555; position: relative; transition: background .15s; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #ddd; transition: left .15s; }
+  .switch.on { background: #0e639c; }
+  .switch.on::after { left: 18px; }
+  .sub .add { color: #73c991; }
+  .sub .del { color: #f14c4c; }
+  .pSec { font-size: 12px; color: #999; margin: 10px 4px 6px; }
+  .pRow { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pRow button { padding: 8px 12px; font-size: 13.5px; }
+  .pRow button.on { border-color: #1177bb; background: #0e639c; color: #fff; }
+  .hint { font-size: 13px; color: #999; margin: 4px 4px 10px; line-height: 1.6; }
+  .qrs { display: flex; gap: 10px; margin: 4px 0 10px; }
+  .qrs figure { flex: 1; min-width: 0; margin: 0; text-align: center; font-size: 13px; color: #aaa; }
+  .qrs img { display: block; width: 100%; border-radius: 10px; margin-bottom: 4px; }
+  a.opt { color: #e6e6e6; text-decoration: none; background: #2d2d2d; border: 1px solid #3c3c3c; border-radius: 8px; box-sizing: border-box; }
+
+  /* file links + viewer */
+  .assistant code[data-file], .tool[data-file] { cursor: pointer; }
+  .assistant code[data-file] { color: #6cb6ff; text-decoration: underline; text-decoration-color: #6cb6ff66; text-underline-offset: 2px; }
+  .tool[data-file] .txt::before { content: "📄 "; }
+  #viewer { position: fixed; inset: 0; z-index: 25; background: #1e1e1e; display: none; flex-direction: column;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #viewer.open { display: flex; }
+  #viewer .bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #252526; border-bottom: 1px solid #333; min-width: 0; }
+  #viewer .names { flex: 1; min-width: 0; line-height: 1.25; }
+  #vName { font-size: 14px; color: #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #vPath { font-size: 11px; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+  #vBody { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #vBody .code { font: 12px/1.5 ui-monospace, Menlo, monospace; padding: 6px 0 40px; min-width: max-content; }
+  #vBody.wrap .code { min-width: 0; }
+  #vBody .l { display: flex; white-space: pre; }
+  #vBody.wrap .l { white-space: pre-wrap; overflow-wrap: anywhere; }
+  #vBody .l i { flex: none; width: 3.6em; padding-right: 10px; text-align: right; color: #5a5a5a; font-style: normal; user-select: none; -webkit-user-select: none; }
+  #vBody .l.hl { background: #264f7855; }
+  #vBody img { display: block; max-width: 100%; margin: 12px auto; background: #fff1; }
+  #vBody .note { padding: 30px 20px; color: #999; text-align: center; line-height: 1.7; }
+  #vBody .note.err { color: #f77; }
+
+  /* gate (login / offline) */
+  #gate { position: fixed; inset: 0; z-index: 20; background: #1e1e1e; display: none; flex-direction: column; gap: 12px; padding: calc(60px + env(safe-area-inset-top)) 24px 24px; }
+  #gate.open { display: flex; }
+  #gate h2 { margin: 0 0 6px; font-size: 20px; color: #eee; }
+  #gate input { font-size: 16px; padding: 11px; }
+  #gate button { padding: 11px; }
+  #gateMsg { color: #aaa; line-height: 1.6; white-space: pre-line; }
+  .primary-link { display: block; text-align: center; padding: 11px; border-radius: 8px; background: #0e639c; color: #fff; text-decoration: none; font-weight: 600; }
+  #gateInput.code { font-size: 26px; letter-spacing: 8px; text-align: center; }
+  #gateMsg.err { color: #f77; }
+  #gateInfo { font-size: 12px; color: #777; }
+</style>
+</head>
+<body>
+<header>
+  <span id="dot"></span>
+  <button id="title"><span id="titleText">连接中…</span></button>
+  <div class="seg">
+    <button id="tabChat" class="on">对话</button>
+    <button id="tabScreen">画面</button>
+  </div>
+  <button id="menuBtn">⋯</button>
+</header>
+
+<main>
+  <section id="chatView" class="view active">
+    <div id="list">
+      <button id="older">↑ 加载更早的消息</button>
+      <div id="items"></div>
+      <div id="empty" hidden>没找到聊天面板。<br>请在 Cursor 里打开 Agent 对话，或切到「画面」查看。</div>
+    </div>
+    <button id="toBottom">↓ 最新</button>
+    <div id="qnBar"></div>
+    <div id="queueBar"></div>
+    <div id="actionBar"></div>
+  </section>
+
+  <section id="screenView" class="view">
+    <div class="tools">
+      <button id="cropPanel" class="on">聊天面板</button>
+      <button id="cropFull">整个窗口</button>
+      <button id="modeTap" class="on">点击</button>
+      <button id="modeScroll">滚动</button>
+      <button id="zoom">1x</button>
+      <button id="refresh">刷新</button>
+    </div>
+    <div id="view"><div id="stage"><img id="screen" alt=""><div id="ripple"></div></div></div>
+    <div class="tools">
+      <button data-key="Escape">Esc</button>
+      <button data-key="Enter">回车</button>
+      <button data-key="Meta+Enter">⌘回车</button>
+      <button data-key="ArrowUp">↑</button>
+      <button data-key="ArrowDown">↓</button>
+      <button data-key="Tab">Tab</button>
+      <button data-key="Backspace">⌫</button>
+      <button data-key="Meta+l">打开聊天</button>
+      <button id="rightClick">右键</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div id="chatTools">
+    <button id="pickMode" hidden></button>
+    <button id="pickModel" hidden></button>
+    <button id="pickHistory">历史</button>
+    <button id="newChat">＋ 新建</button>
+  </div>
+  <div class="row">
+    <textarea id="text" rows="1" placeholder="发给 Cursor Agent…" enterkeyhint="send"></textarea>
+    <button id="img" title="附加图片" aria-label="附加图片"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg></button>
+    <input id="imgFile" type="file" accept="image/*" hidden>
+    <button id="mic" title="语音输入" aria-label="语音输入"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
+    <button id="send">发送</button>
+  </div>
+  <div id="msg"></div>
+</footer>
+
+<div id="shade"></div>
+<div id="sheet"></div>
+
+<div id="viewer">
+  <div class="bar">
+    <button id="vClose">←</button>
+    <div class="names"><div id="vName"></div><div id="vPath"></div></div>
+    <button id="vWrap">换行</button>
+  </div>
+  <div id="vBody"></div>
+</div>
+
+<div id="gate">
+  <h2>Cursor Remote</h2>
+  <div id="gateMsg"></div>
+  <input id="gateInput" autocapitalize="off" autocorrect="off" spellcheck="false">
+  <button id="gateBtn" class="primary"></button>
+  <a id="gateApp" class="primary-link" hidden>在 App 中打开</a>
+  <button id="gateRetry">重试</button>
+  <div id="gateInfo"></div>
+</div>
+
+<script src="i18n.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const PRIMARY = /^(run|allow|accept|approve|keep|continue|build|yes|运行|允许|接受|继续)/i;
+const store = {
+  get: k => localStorage.getItem('cr-' + k),
+  set: (k, v) => v == null ? localStorage.removeItem('cr-' + k) : localStorage.setItem('cr-' + k, v),
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+let base = null, info = null, ws = null, authed = false, failures = 0;
+let mode = store.get('mode') || 'chat';
+let crop = store.get('crop') !== 'full';
+let frame = { w: 1000, h: 800 }, panel = null, zoom = 1, tapMode = 'tap', rightNext = false;
+let windows = [], currentWindow = null;
+
+// Keep the layout above the on-screen keyboard.
+function fitViewport() {
+  const vv = window.visualViewport;
+  if (vv) document.body.style.height = vv.height + 'px';
+}
+window.visualViewport?.addEventListener('resize', fitViewport);
+fitViewport();
+
+function status(text, ok = true) {
+  $('msg').textContent = text;
+  $('msg').className = ok ? '' : 'err';
+}
+
+function send(obj) {
+  if (ws && ws.readyState === 1 && authed) ws.send(JSON.stringify(obj));
+  else status('未连接', false);
+}
+
+/* ---------- gate: pairing / 2FA / offline ---------- */
+let gateSubmit = null;
+function gate({ msg = '', err = false, input = null, retry = false, appLink = null } = {}) {
+  $('gate').classList.add('open');
+  $('gateMsg').textContent = msg;
+  $('gateMsg').className = err ? 'err' : '';
+  const inp = $('gateInput');
+  inp.hidden = $('gateBtn').hidden = !input;
+  gateSubmit = input?.submit || null;
+  if (input) {
+    inp.value = '';
+    inp.placeholder = input.placeholder;
+    inp.className = input.code ? 'code' : '';
+    inp.inputMode = input.code ? 'numeric' : 'url';
+    inp.autocomplete = input.code ? 'one-time-code' : 'off';
+    $('gateBtn').textContent = input.button;
+    if (input.code) setTimeout(() => inp.focus(), 50);
+  }
+  $('gateApp').hidden = !appLink;
+  if (appLink) $('gateApp').href = appLink;
+  $('gateRetry').hidden = !retry;
+  $('gateRetry').textContent = typeof retry === 'string' ? retry : '重试';
+  $('gateInfo').textContent = info?.updated ? '电脑端地址更新于 ' + new Date(info.updated).toLocaleString() : '';
+}
+const ungate = () => $('gate').classList.remove('open');
+$('gateBtn').onclick = () => gateSubmit?.($('gateInput').value.trim());
+$('gateInput').onkeydown = e => { if (e.key === 'Enter') $('gateBtn').click(); };
+$('gateRetry').onclick = () => boot();
+
+/* ---------- relay discovery & auth ---------- */
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const b64u = s => b64(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4));
+
+// On GitHub Pages, url.json holds the relay address encrypted with a random key that only paired devices hold.
+async function decryptUrl(keyText) {
+  const key = await crypto.subtle.importKey('raw', b64u(keyText), 'AES-GCM', false, ['decrypt']);
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(info.iv) }, key, b64(info.data));
+  return JSON.parse(new TextDecoder().decode(plain)).url;
+}
+
+const offline = msg => Object.assign(new Error(msg), { offline: true });
+async function resolveBase() {
+  if (info.self) return location.origin;
+  if (info.v !== 2 || !info.data) throw offline('电脑端还没有发布地址（或还在用旧版本），请在电脑上重启服务');
+  const key = store.get('key');
+  if (!key) throw Object.assign(new Error(''), { unpaired: true });
+  try { return await decryptUrl(key); } catch { throw Object.assign(new Error('配对信息已失效（电脑端重置过），请重新配对'), { unpaired: true, stale: true }); }
+}
+
+async function api(path, opts = {}) {
+  const headers = { 'content-type': 'application/json', ...(store.get('token') ? { authorization: 'Bearer ' + store.get('token') } : {}) };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 10000);
+  try {
+    return await fetch(base + path, { ...opts, headers, signal: ctl.signal, cache: 'no-store' });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+const post = (path, body) => api(path, { method: 'POST', body: JSON.stringify(body || {}) });
+
+// Pairing links look like <app>#pair=<url key>.<one-time code>.
+function parsePair(text) {
+  const m = /[#&]pair=([\w-]{43})\.([\w-]{16,})/.exec(text || '');
+  return m ? { key: m[1], code: m[2] } : null;
+}
+let pending = parsePair(location.hash);
+if (pending) history.replaceState(null, '', location.pathname + location.search);
+// Opened from a notification: <app>#win=<window id>.
+{
+  const m = /[#&]win=([^&]+)/.exec(location.hash);
+  if (m) {
+    store.set('window', decodeURIComponent(m[1]));
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+}
+window.addEventListener('hashchange', () => {
+  const p = parsePair(location.hash);
+  if (!p) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  pending = p;
+  boot();
+});
+store.set('pw', null);
+
+function deviceName() {
+  const ua = navigator.userAgent;
+  const model = /Android [\d.]+; (?:[a-z]{2}-[a-z]{2}; )?([^;)]+?)(?: Build|\))/i.exec(ua)?.[1];
+  const kind = inApp ? '安卓 App' : /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? '安卓浏览器' : /Mac/.test(ua) ? 'Mac 浏览器' : '浏览器';
+  return model && !/^K$/.test(model) ? `${model}（${kind}）` : kind;
+}
+
+function showUnpaired(msg = '') {
+  gate({
+    msg: (msg ? msg + '\n\n' : '') + '这台设备还没有配对。\n在电脑上运行 npm run pair，用手机扫码；或者把链接复制过来粘贴到下面。',
+    err: !!msg,
+    input: { placeholder: '粘贴配对链接', button: '配对', submit: pastePair },
+  });
+}
+
+function pastePair(text) {
+  const p = parsePair(text);
+  if (!p) return showUnpaired('这不是配对链接（应包含 #pair=…）');
+  let target;
+  try { target = new URL(text.trim()); } catch {}
+  const here = location.origin + location.pathname;
+  // A link for another app address: switch to it (the Android app remembers the new address).
+  if (target && /^https?:$/.test(target.protocol) && target.origin + target.pathname !== here) {
+    if (inApp) return window.CursorRemoteApp.setUrl(target.href);
+    location.href = target.href;
+    return;
+  }
+  pending = p;
+  boot();
+}
+
+function showTotp(onCode, err = '') {
+  gate({
+    msg: (err ? err + '\n' : '') + '请输入 Authenticator 里「Cursor Remote」的 6 位验证码',
+    err: !!err,
+    input: { placeholder: '000000', button: '验证', code: true, submit: onCode },
+  });
+}
+
+async function pair(totp) {
+  gate({ msg: '正在配对…' });
+  let r, body;
+  try {
+    r = await post('/api/pair', { code: pending.code, name: deviceName(), totp });
+    body = await r.json().catch(() => ({}));
+  } catch {
+    return gate({ msg: '连不上电脑，配对链接 10 分钟内有效，稍后重试', err: true, retry: true });
+  }
+  if (r.ok) {
+    store.set('token', body.token);
+    pending = null;
+    return connect();
+  }
+  if (body.needTotp) return showTotp(code => pair(code), body.error);
+  pending = null;
+  if (store.get('token')) return gate({ msg: (body.error || '配对失败') + '\n\n这台设备之前已经配对过，可以继续使用。', err: true, retry: '继续使用' });
+  showUnpaired(body.error || '配对失败');
+}
+
+async function verifyTotp(code) {
+  gate({ msg: '正在验证…' });
+  try {
+    const r = await post('/api/totp', { code });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) return connect();
+    showTotp(verifyTotp, body.error || '验证失败');
+  } catch {
+    gate({ msg: '连不上电脑', err: true, retry: true });
+  }
+}
+
+async function boot() {
+  authed = false;
+  clearTimeout(retryTimer);
+  // Android browser opened a pairing link: offer to hand it to the installed app instead.
+  if (pending && /Android/.test(navigator.userAgent) && !inApp && !pending.stay) {
+    const link = `cursorremote://pair?app=${encodeURIComponent(location.origin + location.pathname)}&d=${pending.key}.${pending.code}`;
+    gate({ msg: '已收到配对链接。\n装了安卓 App 就在 App 里打开；否则直接在浏览器里用。', appLink: link, retry: '在浏览器里继续' });
+    pending.stay = true;
+    return;
+  }
+  gate({ msg: '正在查找电脑…' });
+  let res;
+  try {
+    res = await fetch('url.json?t=' + Date.now(), { cache: 'no-store' });
+  } catch {
+    return gate({ msg: '读取失败，请检查手机网络（需要能打开 github.io）', err: true, retry: true });
+  }
+  info = res.ok ? await res.json().catch(() => null) : null;
+  if (!info) return gate({ msg: '还没有找到电脑地址。\n请在电脑上运行 npm run public 并保持窗口开着，约 1 分钟后点重试。', err: true, retry: true });
+  if (pending) store.set('key', pending.key);
+  try {
+    base = await resolveBase();
+  } catch (e) {
+    if (e.offline) return gate({ msg: e.message, retry: true });
+    if (e.stale) { store.set('key', null); store.set('token', null); }
+    return showUnpaired(e.message);
+  }
+  if (pending) return pair();
+  if (!store.get('token')) return showUnpaired();
+  let me;
+  try {
+    me = await api('/api/me').then(r => r.json());
+  } catch {
+    autoRetry();
+    return gate({ msg: '电脑不在线：可能关机、睡眠，或服务刚重启（新地址约 1 分钟后生效）。会自动重试…', retry: true });
+  }
+  if (!me.paired) {
+    store.set('token', null);
+    return showUnpaired('这台设备已被移除，请重新配对');
+  }
+  if (me.needTotp) return showTotp(verifyTotp);
+  connect();
+}
+
+let retryTimer = null;
+function autoRetry() {
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(() => { if (!authed) boot(); }, 15000);
+}
+
+function connect() {
+  clearTimeout(retryTimer);
+  ws = new WebSocket(base.replace(/^http/, 'ws') + '/ws');
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'auth', token: store.get('token') }));
+  let rejected = false;
+  ws.onclose = async () => {
+    $('dot').className = '';
+    if (!authed) {
+      // boot() asks /api/me whether the device was removed or needs 2FA again.
+      await sleep(rejected ? 0 : 2000);
+      return boot();
+    }
+    authed = false;
+    failures++;
+    status('断开，重连中…', false);
+    await sleep(Math.min(8000, 800 * failures));
+    // After repeated failures the relay may have restarted on a new address; rediscover it.
+    if (failures >= 3) { failures = 0; return boot(); }
+    connect();
+  };
+  ws.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    if (m.t === 'auth') {
+      if (!m.ok) { rejected = true; return; }
+      authed = true; failures = 0;
+      ungate();
+      $('dot').className = 'ok';
+      status('已连接');
+      send({ t: 'mode', mode });
+      send({ t: 'windows' });
+      const fromNotice = window.CursorRemoteApp?.takeOpenWin?.();
+      if (fromNotice) store.set('window', fromNotice);
+      send({ t: 'attach', id: store.get('window') || '' });
+      sentWidth = 0;
+      applyQuality();
+      send({ t: 'visible', v: document.visibilityState === 'visible' });
+      send({ t: 'lang', v: I18N.lang });
+      syncNotify();
+      setTimeout(checkAppUpdate, 3000);
+    }
+    else if (m.t === 'chat') renderChat(m.chat);
+    else if (m.t === 'frame') onFrame(m);
+    else if (m.t === 'panel') { panel = m.rect; layoutStage(); applyQuality(); }
+    else if (m.t === 'windows') { windows = m.list; currentWindow = m.current; if (sheetKind === 'windows') showWindows(); }
+    else if (m.t === 'attached') {
+      store.set('window', m.id);
+      currentWindow = m.id;
+      $('titleText').textContent = winLabel(m.title).name;
+      send({ t: 'windows' });
+    }
+    else if (m.t === 'menu') showMenu(m.kind, m.items, m.max);
+    else if (m.t === 'params') showParams(m);
+    else if (m.t === 'changes') showChanges(m);
+    else if (m.t === 'file') showFile(m);
+    else if (m.t === 'status') status(m.msg, m.ok);
+  };
+}
+
+/* ---------- bottom sheet ---------- */
+let sheetKind = null;
+function openSheet(kind, html) {
+  sheetKind = kind;
+  $('sheet').innerHTML = html;
+  $('shade').classList.add('open');
+  $('sheet').classList.add('open');
+}
+function closeSheet() {
+  sheetKind = null;
+  $('shade').classList.remove('open');
+  $('sheet').classList.remove('open');
+}
+$('shade').onclick = () => { closeSheet(); askDone?.(false); };
+
+// Confirmation for anything that interrupts the Agent or throws work away; resolves false if dismissed.
+let askDone = null;
+function ask(question, ok = '确定') {
+  askDone?.(false);
+  return new Promise(resolve => {
+    askDone = v => { askDone = null; resolve(v); };
+    openSheet('ask', `<h3 class="askQ">${esc(question)}</h3><div class="askBtns">`
+      + `<button id="askNo">取消</button><button id="askOk" class="danger">${esc(ok)}</button></div>`);
+    $('askOk').onclick = () => { closeSheet(); askDone?.(true); };
+    $('askNo').onclick = () => { closeSheet(); askDone?.(false); };
+  });
+}
+// Buttons on Cursor's own cards that stop, reject or discard work.
+const RISKY = /^(stop|reject|deny|undo|discard|revert|cancel|delete|remove|停止|拒绝|撤销|丢弃|取消|删除)/i;
+
+const KIND_TAG = { agents: 'Agents', ssh: 'SSH', local: '本地' };
+
+// Cursor titles look like "file.py — Folder [SSH: host]"; the window is identified by folder (+ host), not the open file.
+function winLabel(title) {
+  const host = /\[SSH: ([^\]]+)\]/.exec(title)?.[1];
+  const parts = title.replace(/\s*\[SSH: [^\]]+\]\s*$/, '').split(' — ').map(s => s.replace(/^●\s*/, '').trim());
+  const folder = parts.pop() || title;
+  return { name: host ? `${folder} · ${host}` : folder, file: parts.join(' — ') };
+}
+
+function showWindows() {
+  const rows = windows.map(w => `<button class="opt ${w.id === currentWindow ? 'cur' : ''}" data-win="${esc(w.id)}">
+    <span class="tag">${KIND_TAG[w.kind] || ''}</span><span class="lbl">${esc(winLabel(w.title || w.id).name)}${winLabel(w.title || '').file ? `<span class="sub">${esc(winLabel(w.title).file)}</span>` : ''}</span></button>`).join('');
+  openSheet('windows', `<h3>切换 Cursor 窗口</h3>${rows || '<div class="hint">没有找到窗口</div>'}`);
+}
+$('title').onclick = () => { send({ t: 'windows' }); showWindows(); };
+
+const MENU_TITLE = { mode: '选择模式', model: '选择模型', history: '历史对话' };
+function showMenu(kind, items, max) {
+  if (!items.length) return status('菜单是空的，可能 Cursor 版本不同', false);
+  status('');
+  const maxRow = typeof max === 'boolean'
+    ? `<button class="opt" data-max><span class="lbl">MAX Mode<span class="sub">更大上下文、更贵</span></span><span class="switch ${max ? 'on' : ''}"></span></button>` : '';
+  openSheet('menu', `<h3>${MENU_TITLE[kind] || ''}</h3>` + maxRow + items.map(it => {
+    const pick = `<button class="opt ${it.checked ? 'cur' : ''}" data-kind="${kind}" data-label="${esc(it.label)}"><span class="lbl">${esc(it.label)}</span></button>`;
+    return it.params ? `<div class="optRow">${pick}<button class="paramBtn" data-params="${esc(it.id)}" data-plabel="${esc(it.label)}">参数</button></div>` : pick;
+  }).join(''));
+}
+
+function showChanges(m) {
+  status('');
+  if (!m.files.length) { if (sheetKind === 'changes') closeSheet(); return status('没有待处理的改动'); }
+  openSheet('changes', `<h3>Agent 改动的文件（${m.files.length}）</h3>`
+    + (m.actions.length ? `<div class="pRow" style="margin-bottom:10px">${m.actions.map(a => `<button data-chbar="${esc(a)}">${esc(a)}</button>`).join('')}</div>` : '')
+    + m.files.map((f, i) => `<div class="optRow"><button class="opt" data-chopen="${esc(f.name)}"><span class="lbl">${esc(f.name)}`
+      + `<span class="sub"><span class="add">${esc(f.add)}</span> <span class="del">${esc(f.del)}</span></span></span></button>`
+      + `<button class="paramBtn" data-ch="${i}" data-name="${esc(f.name)}" data-act2="keep">保留</button>`
+      + `<button class="paramBtn" data-ch="${i}" data-name="${esc(f.name)}" data-act2="undo">撤销</button></div>`).join('')
+    + '<div class="hint">点文件名查看内容。「保留」接受这个文件的改动，「撤销」把它恢复成改动前的样子。</div>');
+}
+
+function showParams(m) {
+  status('');
+  openSheet('params', `<h3>${esc(m.label || '模型')} 参数</h3>` + m.sections.map(s => `<div class="pSec">${esc(s.title)}</div><div class="pRow">`
+    + s.items.map(it => `<button class="${it.checked ? 'on' : ''} ${it.toggle ? 'tg' : ''}" data-model="${esc(m.model)}" data-plabel="${esc(m.label)}" data-section="${esc(s.title)}" data-value="${esc(it.label)}">${esc(it.label)}${it.toggle ? (it.checked ? '：开' : '：关') : ''}</button>`).join('')
+    + '</div>').join('') + '<div class="hint">改动会直接应用到电脑上 Cursor 的这个模型。</div>');
+}
+
+let installEvent = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; });
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+let donate = null;
+fetch('donate.json').then(r => r.ok ? r.json() : null).then(d => { if (d?.qr?.length || d?.links?.length) donate = d; }).catch(() => {});
+
+async function showDevices() {
+  let list = [];
+  try { list = (await api('/api/devices').then(r => r.json())).devices || []; } catch {}
+  const when = t => new Date(t).toLocaleDateString();
+  openSheet('devices', `<h3>已配对设备</h3>` + list.map(d => `
+    <div class="opt ${d.current ? 'cur' : ''}"><span class="lbl">${esc(d.name)}<span class="sub">配对于 ${when(d.created)} · 最近使用 ${when(d.lastSeen)}</span></span>
+    ${d.current ? '' : `<button data-remove="${esc(d.id)}" data-name="${esc(d.name)}">移除</button>`}</div>`).join('')
+    + '<div class="hint">添加新设备：在电脑上运行 npm run pair。<br>开启 Authenticator 二次验证：npm run 2fa。</div>');
+}
+
+function showDonate() {
+  const links = (donate.links || []).filter(l => /^https:\/\//.test(l.url));
+  openSheet('donate', `<h3>赞赏作者 ☕</h3>
+    <div class="hint">觉得好用的话，可以请作者喝杯咖啡。完全自愿，感谢支持！</div>
+    <div class="qrs">${(donate.qr || []).map(q => `<figure><img src="${esc(q.image)}" alt="${esc(q.label)}"><figcaption>${esc(q.label)}</figcaption></figure>`).join('')}</div>
+    ${links.map(l => `<a class="opt" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="lbl">${esc(l.label)}</span><span class="tag">海外</span></a>`).join('')}
+    <div class="hint">手机上可以长按二维码保存，再用微信 / 支付宝「扫一扫」从相册识别。</div>`);
+}
+
+function showMainMenu() {
+  const notifyItem = notifyOn
+    ? `<button class="opt" data-act="notifyOff"><span class="lbl">通知：已开启<span class="sub">Agent 完成或等你确认时提醒</span></span><span class="tag">关闭</span></button>
+       <button class="opt" data-act="notifyTest"><span class="lbl">发一条测试通知</span></button>`
+    : `<button class="opt" data-act="notifyOn"><span class="lbl">开启通知<span class="sub">Agent 完成或等你确认时提醒</span></span></button>`;
+  const update = apkUpdate()
+    ? `<button class="opt" data-act="appUpdate"><span class="lbl">更新安卓 App（v${esc(appVersion)} → v${esc(apkUpdate())}）</span><span class="tag">新</span></button>`
+    : `<button class="opt" data-act="appUpdate"><span class="lbl">检查 App 更新（当前 v${esc(appVersion)}）</span></button>`;
+  openSheet('main', `<h3>菜单</h3>
+    ${notifyItem}
+    ${inApp && appVersion ? update : ''}
+    ${inApp ? '<button class="opt" data-act="changeUrl"><span class="lbl">更换 App 地址</span></button>'
+      : standalone() ? '' : '<button class="opt" data-act="install"><span class="lbl">安装到手机桌面（像 App 一样打开）</span></button>'}
+    <button class="opt" data-act="reconnect"><span class="lbl">重新连接</span></button>
+    <button class="opt" data-act="voice"><span class="lbl">语音按钮<span class="sub">输入法键盘自带麦克风的话用不着</span></span><span class="switch ${store.get('voice') === 'on' ? 'on' : ''}"></span></button>
+    <button class="opt" data-act="lang"><span class="lbl">语言 / Language</span><span class="tag">${I18N.lang === 'en' ? 'English' : '中文'}</span></button>
+    <button class="opt" data-act="devices"><span class="lbl">已配对设备</span></button>
+    <button class="opt" data-act="logout"><span class="lbl">取消本机配对</span></button>
+    ${donate ? '<button class="opt" data-act="donate"><span class="lbl">赞赏作者 ☕</span></button>' : ''}`);
+}
+$('menuBtn').onclick = showMainMenu;
+
+const inApp = /CursorRemoteApp/.test(navigator.userAgent);
+const APK_RELEASE = 'https://github.com/Suchenl/cursor-remote-lite/releases/latest/download/CursorRemote.apk';
+// A copy on the user's own GitHub Pages downloads more reliably in mainland China than GitHub Releases.
+let apkUrl = APK_RELEASE;
+fetch('CursorRemote.apk', { method: 'HEAD' }).then(r => { if (r.ok) apkUrl = new URL('CursorRemote.apk', location.href).href; }).catch(() => {});
+const appAddress = () => location.origin + location.pathname.replace(/index\.html$/, '');
+
+// The page itself updates with GitHub Pages; only the Android shell needs a new APK now and then.
+const appVersion = /CursorRemoteApp\/v?([\d.]+)/.exec(navigator.userAgent)?.[1];
+const newerThan = (a, b) => {
+  const x = a.split('.').map(Number), y = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+  return false;
+};
+const apkUpdate = () => {
+  const latest = store.get('apkLatest');
+  return appVersion && latest && newerThan(latest, appVersion) ? latest : null;
+};
+async function checkAppUpdate(manual = false) {
+  if (!inApp || !appVersion) return;
+  if (!manual && Date.now() - (store.get('apkChecked') || 0) < 6 * 3600e3) return;
+  try {
+    const r = await fetch('https://api.github.com/repos/Suchenl/cursor-remote-lite/releases/latest', { cache: 'no-store' });
+    if (!r.ok) throw new Error();
+    store.set('apkLatest', String((await r.json()).tag_name || '').replace(/^v/, ''));
+    store.set('apkChecked', Date.now());
+  } catch {
+    if (manual) status('检查更新失败，请稍后再试', false);
+    return;
+  }
+  if (apkUpdate()) status(`安卓 App 有新版本 v${apkUpdate()}，点右上角「⋯」更新`);
+  else if (manual) status('已经是最新版本');
+}
+function installAppUpdate() {
+  if (window.CursorRemoteApp?.update) {
+    window.CursorRemoteApp.update(apkUrl);
+    status('正在下载新版本，下载完会弹出安装界面');
+  }
+  // Older shells can't download: an off-site link opens in the system browser instead.
+  else location.href = APK_RELEASE;
+}
+
+/* ---------- notifications ---------- */
+// Android app: its own background listener. Elsewhere: Web Push (iPhone only from the home-screen app).
+const nativeNotify = () => Boolean(window.CursorRemoteApp?.setNotify);
+const webPush = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let notifyOn = false;
+
+const swReady = () => Promise.race([navigator.serviceWorker.ready, sleep(5000).then(() => { throw new Error('通知组件没有加载，请刷新后再试'); })]);
+const pushSub = async () => webPush() ? (await swReady()).pushManager.getSubscription() : null;
+const nativeConfig = () => JSON.stringify({ app: appAddress(), key: store.get('key') || '', token: store.get('token') || '' });
+
+// After every connect: refresh the menu state and re-register, since re-pairing gives the device a new id.
+async function syncNotify() {
+  try {
+    if (nativeNotify()) {
+      notifyOn = window.CursorRemoteApp.notifyEnabled();
+      if (notifyOn) window.CursorRemoteApp.setNotify(nativeConfig());
+      return;
+    }
+    const sub = await pushSub();
+    notifyOn = Boolean(sub);
+    if (sub) await post('/api/push/subscribe', { sub: sub.toJSON() });
+  } catch {}
+}
+
+async function enableNotify() {
+  if (nativeNotify()) {
+    window.CursorRemoteApp.setNotify(nativeConfig());
+    notifyOn = true;
+    return status('通知已开启。华为等手机请在「设置 → 应用启动管理」里允许本 App 后台活动');
+  }
+  if (inApp) return status('请先在菜单里更新安卓 App，新版才支持通知', false);
+  if (!webPush()) {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    return status(ios && !standalone() ? 'iPhone 要先「分享 → 添加到主屏幕」，从桌面图标打开后才能开启通知' : '这个浏览器不支持通知', false);
+  }
+  // Must be the first await: iOS only shows the permission prompt directly inside a tap.
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') return status('没有通知权限，请在系统设置里允许本 App 发通知', false);
+  try {
+    const { key } = await api('/api/push/key').then(r => r.json());
+    const reg = await swReady();
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(key) });
+    const r = await post('/api/push/subscribe', { sub: sub.toJSON() });
+    if (!r.ok) throw new Error((await r.json()).error || '注册失败');
+    notifyOn = true;
+    status('通知已开启');
+  } catch (e) {
+    status('开启通知失败：' + e.message, false);
+  }
+}
+
+async function disableNotify() {
+  if (nativeNotify()) window.CursorRemoteApp.setNotify('');
+  else {
+    await (await pushSub().catch(() => null))?.unsubscribe().catch(() => {});
+    await post('/api/push/unsubscribe').catch(() => {});
+  }
+  notifyOn = false;
+  status('通知已关闭');
+}
+
+function openWin(id) {
+  if (!id) return;
+  store.set('window', id);
+  if (authed) send({ t: 'attach', id });
+}
+window.openWin = openWin;
+navigator.serviceWorker?.addEventListener('message', e => openWin(e.data?.openWin));
+document.addEventListener('visibilitychange', () => {
+  if (authed) send({ t: 'visible', v: document.visibilityState === 'visible' });
+});
+
+function showInstallHelp() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (ios) {
+    return openSheet('install', `<h3>安装到桌面</h3><div class="hint">用 Safari 打开本页 → 点底部「分享」按钮 → 选「添加到主屏幕」。<br>安装后从桌面图标打开，就是全屏 App。</div>`);
+  }
+  openSheet('install', `<h3>安装安卓 App</h3>
+    <a class="opt" href="${esc(apkUrl)}"><span class="lbl">下载安卓 App（推荐）</span><span class="tag">APK</span></a>
+    <div class="hint">华为等没有谷歌服务的手机、任何浏览器都能装。下载后点开安装（如提示「未知来源」，允许即可）。<br>
+      首次打开填入这个地址：</div>
+    <button class="opt" data-act="copyAddress"><span class="lbl">${esc(appAddress())}</span><span class="tag">复制</span></button>
+    ${installEvent ? '<button class="opt" data-act="browserInstall"><span class="lbl">或者：用浏览器安装（需要谷歌服务）</span></button>' : ''}`);
+}
+
+$('sheet').addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.win) { closeSheet(); return send({ t: 'attach', id: b.dataset.win }); }
+  if (b.dataset.kind) { closeSheet(); status('切换中…'); return send({ t: 'pickMenu', kind: b.dataset.kind, label: b.dataset.label }); }
+  if (b.dataset.chopen) { closeSheet(); return openFile(b.dataset.chopen); }
+  if (b.dataset.ch) {
+    const undo = b.dataset.act2 === 'undo';
+    if (undo && !await ask(`撤销「${b.dataset.name}」的改动？\n文件会恢复成 Agent 改之前的样子。`, '撤销')) return send({ t: 'changes' });
+    status(undo ? '正在撤销…' : '正在保留…');
+    return send({ t: 'change', i: Number(b.dataset.ch), name: b.dataset.name, act: b.dataset.act2 });
+  }
+  if (b.dataset.chbar) {
+    if (RISKY.test(b.dataset.chbar) && !await ask(`确定要点「${b.dataset.chbar}」吗？`, b.dataset.chbar)) return send({ t: 'changes' });
+    status('处理中…');
+    return send({ t: 'change', i: 0, name: b.dataset.chbar, act: 'bar' });
+  }
+  if ('max' in b.dataset) { status('切换 MAX Mode…'); return send({ t: 'toggleMax' }); }
+  if (b.dataset.params) { status('读取模型参数…'); return send({ t: 'params', model: b.dataset.params, label: b.dataset.plabel }); }
+  if (b.dataset.section) { status('设置中…'); return send({ t: 'pickParam', model: b.dataset.model, label: b.dataset.plabel, section: b.dataset.section, value: b.dataset.value }); }
+  const act = b.dataset.act;
+  if (act === 'install') showInstallHelp();
+  else if (act === 'browserInstall') { closeSheet(); installEvent?.prompt(); installEvent = null; }
+  else if (act === 'copyAddress') {
+    await navigator.clipboard?.writeText(appAddress()).then(() => status('已复制地址'), () => status('复制失败，请手动记下地址', false));
+  }
+  else if (act === 'changeUrl') window.CursorRemoteApp?.changeUrl();
+  else if (act === 'notifyOn') { closeSheet(); enableNotify(); }
+  else if (act === 'notifyOff') { closeSheet(); disableNotify(); }
+  else if (act === 'notifyTest') {
+    closeSheet();
+    const r = await post('/api/push/test').catch(() => null);
+    status(r?.ok ? '已发送测试通知，几秒内应该收到' : '发送失败', Boolean(r?.ok));
+  }
+  else if (act === 'appUpdate') {
+    if (apkUpdate()) { closeSheet(); installAppUpdate(); }
+    else { await checkAppUpdate(true); if (apkUpdate()) showMainMenu(); }
+  }
+  else if (act === 'reconnect') { closeSheet(); ws?.close(); }
+  else if (act === 'donate') showDonate();
+  else if (act === 'lang') openSheet('lang', '<h3>语言 / Language</h3>'
+    + `<button class="opt ${I18N.lang === 'zh' ? 'cur' : ''}" data-act="setLang" data-v="zh"><span class="lbl">中文</span></button>`
+    + `<button class="opt ${I18N.lang === 'en' ? 'cur' : ''}" data-act="setLang" data-v="en"><span class="lbl">English</span></button>`);
+  else if (act === 'setLang') I18N.set(b.dataset.v);
+  else if (act === 'voice') {
+    store.set('voice', store.get('voice') === 'on' ? null : 'on');
+    document.body.classList.toggle('voice', store.get('voice') === 'on');
+    b.querySelector('.switch').classList.toggle('on', store.get('voice') === 'on');
+  }
+  else if (act === 'devices') showDevices();
+  else if (b.dataset.remove) {
+    if (!await ask(`移除「${b.dataset.name}」？它会立即断开，要重新配对才能再用。`, '移除')) return showDevices();
+    await post('/api/devices/remove', { id: b.dataset.remove }).catch(() => {});
+    showDevices();
+  }
+  else if (act === 'logout') {
+    if (!await ask('取消本机配对？之后要在电脑上重新运行 npm run pair 才能再用。', '取消配对')) return;
+    await post('/api/logout').catch(() => {});
+    store.set('token', null); store.set('key', null);
+    authed = false; ws?.close();
+  }
+});
+
+/* ---------- mode switching ---------- */
+function setMode(m) {
+  mode = m;
+  store.set('mode', m);
+  $('tabChat').classList.toggle('on', m === 'chat');
+  $('tabScreen').classList.toggle('on', m === 'screen');
+  $('chatView').classList.toggle('active', m === 'chat');
+  $('screenView').classList.toggle('active', m === 'screen');
+  $('chatTools').hidden = m !== 'chat';
+  if (authed) send({ t: 'mode', mode: m });
+  if (m === 'screen') { layoutStage(); applyQuality(); }
+}
+$('tabChat').onclick = () => setMode('chat');
+$('tabScreen').onclick = () => setMode('screen');
+
+/* ---------- chat view ---------- */
+const list = $('list'), itemsEl = $('items');
+const cache = new Map();
+
+function buttonsHtml(labels, item) {
+  return labels.map((l, n) =>
+    `<button class="${PRIMARY.test(l) ? 'primary' : ''}" data-item="${esc(item)}" data-n="${n}">${esc(l)}</button>`).join('');
+}
+
+function renderItem(it) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + it.k;
+  if (it.k === 'human') el.innerHTML = `<div class="bubble">${esc(it.t || '')}</div>`;
+  // it.h comes from the whitelist sanitizer in server.mjs (pageHelpers.clean): plain tags only, text escaped.
+  else if (it.k === 'assistant') el.innerHTML = it.h || '';
+  else if (it.k === 'tool') {
+    el.innerHTML = `<div class="txt">${esc(it.t || '')}</div>`;
+    if (it.f) el.dataset.file = it.f;
+  }
+  else el.textContent = it.t || '';
+  if (it.b && it.k !== 'human') el.insertAdjacentHTML('beforeend', `<div class="btns">${buttonsHtml(it.b, it.i)}</div>`);
+  return el;
+}
+
+const nearBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+
+let lastChat = null;
+function renderChat(chat) {
+  lastChat = chat;
+  $('empty').hidden = !!chat;
+  $('older').hidden = !chat;
+  $('pickMode').hidden = !chat?.mode;
+  $('pickModel').hidden = !chat?.model;
+  if (chat?.mode) $('pickMode').textContent = chat.mode + ' ▾';
+  if (chat?.model) $('pickModel').textContent = chat.model + ' ▾';
+  if (!chat) { itemsEl.replaceChildren(); renderQueue(false, []); renderQuestions(null); return; }
+  const stick = nearBottom();
+  // Anchor on the first visible item so loading older messages doesn't jump.
+  let anchor = null, anchorTop = 0;
+  if (!stick) {
+    for (const el of itemsEl.children) {
+      if (el.offsetTop + el.offsetHeight > list.scrollTop) { anchor = el.dataset.i; anchorTop = el.offsetTop - list.scrollTop; break; }
+    }
+  }
+  const els = chat.items.map(it => {
+    const key = JSON.stringify(it);
+    const hit = cache.get(it.i);
+    if (hit && hit.key === key) return hit.el;
+    const el = renderItem(it);
+    el.dataset.i = it.i;
+    cache.set(it.i, { key, el });
+    return el;
+  });
+  itemsEl.replaceChildren(...els);
+  const live = new Set(chat.items.map(it => it.i));
+  for (const k of cache.keys()) if (!live.has(k)) cache.delete(k);
+
+  $('actionBar').innerHTML = buttonsHtml(chat.global, 'g');
+  $('actionBar').classList.toggle('show', chat.global.length > 0);
+  renderQueue(chat.busy, chat.queued || [], chat.subagents || [], chat.readonly, chat.changed);
+  renderQuestions(chat.readonly ? null : chat.questions);
+
+  if (stick) list.scrollTop = list.scrollHeight;
+  else if (anchor) {
+    const el = [...itemsEl.children].find(e => e.dataset.i === anchor);
+    if (el) list.scrollTop = el.offsetTop - anchorTop;
+  }
+  updateToBottom();
+}
+
+let subsOpen = false;
+// The Agent's ask-question tool: a card with the questions, options, a free-text answer and submit / skip.
+let qnSig = '';
+function renderQuestions(qs) {
+  const bar = $('qnBar');
+  const sig = JSON.stringify(qs);
+  if (sig === qnSig) return;
+  qnSig = sig;
+  if (!qs?.list?.length) { bar.innerHTML = ''; bar.classList.remove('show'); return; }
+  bar.innerHTML = `<div class="qnHead">❓ Agent 在问你${qs.list.length > 1 ? `（${qs.list.length} 个问题）` : ''}</div>`
+    + qs.list.map((q, qi) => `<div class="qnQ">${qs.list.length > 1 ? `${qi + 1}. ` : ''}${esc(q.text)}</div><div class="qnOpts">`
+      + q.options.map((o, oi) => {
+        const letter = String.fromCharCode(65 + oi);
+        return o.free
+          ? `<div class="qnFree ${o.sel ? 'on' : ''}"><input data-qi="${qi}" data-oi="${oi}" placeholder="其他…" value="${esc(o.value)}" enterkeyhint="done"><button data-qfree="${qi}:${oi}">填入</button></div>`
+          : `<button class="qnOpt ${o.sel ? 'on' : ''}" data-qi="${qi}" data-oi="${oi}"><b>${letter}</b><span>${esc(o.label)}</span></button>`;
+      }).join('') + '</div>').join('')
+    + `<div class="qnAct"><button data-qpart="skip">跳过</button><button class="primary" data-qpart="submit" ${qs.canSubmit ? '' : 'disabled'}>提交</button></div>`;
+  bar.classList.add('show');
+}
+
+$('qnBar').onclick = e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if (b.dataset.qpart) { status(b.dataset.qpart === 'skip' ? '已跳过' : '已提交'); return send({ t: 'question', part: b.dataset.qpart }); }
+  if (b.dataset.qfree) {
+    const [qi, oi] = b.dataset.qfree.split(':').map(Number);
+    return send({ t: 'question', qi, oi, part: 'option', text: b.previousElementSibling.value });
+  }
+  if (b.dataset.qi) send({ t: 'question', qi: Number(b.dataset.qi), oi: Number(b.dataset.oi), part: 'option' });
+};
+$('qnBar').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' || !e.target.matches('input')) return;
+  e.preventDefault();
+  e.target.nextElementSibling.click();
+});
+
+function renderQueue(busy, queued, subs = [], readonly = false, changed = 0) {
+  const bar = $('queueBar');
+  let html = '';
+  if (readonly) html += `<div class="run sub"><span>正在查看子 Agent 的对话（只读）</span><button data-main>返回主对话</button></div>`;
+  if (subs.length && !readonly) {
+    html += `<button class="qh fold" data-fold>${subsOpen ? '▾' : '▸'} <span>子 Agent 运行中 ${subs.length} 个</span></button>`;
+    if (subsOpen) html += subs.map(n => `<div class="q"><span class="qt sa">${esc(n)}</span>`
+      + `<button data-sub="${esc(n)}" data-part="open">查看</button><button data-sub="${esc(n)}" data-part="stop">停止</button></div>`).join('');
+  }
+  if (busy && !readonly) html += `<div class="run"><i></i><span>Agent 正在运行${queued.length ? '，下面的消息会在这一轮结束后依次发送' : '，现在发的消息会先排队'}</span><button data-stop>停止</button></div>`;
+  if (queued.length) {
+    html += `<div class="qh">排队中 ${queued.length} 条</div>`;
+    html += queued.map(q => `<div class="q"><span class="qt">${esc(q.t || '(空)')}</span>`
+      + `<button data-q="${esc(q.id)}" data-a="edit">修改</button>`
+      + `<button data-q="${esc(q.id)}" data-a="send" title="打断当前这一轮，立刻发送">立即发送</button>`
+      + `<button data-q="${esc(q.id)}" data-a="remove">删除</button></div>`).join('');
+  }
+  if (changed && !readonly) html += `<button class="qh fold" data-changes>改动了 ${changed} 个文件 ›</button>`;
+  bar.innerHTML = html;
+  bar.classList.toggle('show', Boolean(html));
+}
+
+function editQueued(id) {
+  const q = (lastChat?.queued || []).find(x => x.id === id);
+  if (!q) return status('这条排队消息已经不在了', false);
+  openSheet('queueEdit', `<h3>修改排队消息</h3>
+    <textarea id="qEdit" style="width:100%;box-sizing:border-box;min-height:120px;max-height:50dvh;margin-bottom:10px"></textarea>
+    <button class="opt" id="qSave" style="justify-content:center;background:#0e639c;border-color:#1177bb;color:#fff;font-weight:600">保存（仍在排队）</button>`);
+  $('qEdit').value = q.t;
+  $('qSave').onclick = () => {
+    const v = $('qEdit').value;
+    if (!v.trim()) return status('内容不能为空；不想要这条就点「删除」', false);
+    send({ t: 'queue', id, action: 'edit', text: v });
+    closeSheet();
+    status('正在修改排队消息…');
+  };
+}
+
+$('queueBar').onclick = async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  if ('changes' in b.dataset) { status('读取改动的文件…'); return send({ t: 'changes' }); }
+  if ('fold' in b.dataset) { subsOpen = !subsOpen; return renderQueue(lastChat?.busy, lastChat?.queued || [], lastChat?.subagents || [], lastChat?.readonly, lastChat?.changed); }
+  if ('stop' in b.dataset) {
+    if (!await ask('停止 Agent？\n它这一轮正在做的事会中断。', '停止')) return;
+    send({ t: 'stop' }); status('已停止 Agent'); return;
+  }
+  if ('main' in b.dataset) { send({ t: 'mainChat' }); status('返回主对话…'); return; }
+  if (b.dataset.sub) {
+    if (b.dataset.part === 'stop' && !await ask(`停止子 Agent「${b.dataset.sub}」？\n它做到一半的工作会中断。`, '停止')) return;
+    send({ t: 'subagent', name: b.dataset.sub, part: b.dataset.part });
+    status(b.dataset.part === 'stop' ? '已停止子 Agent' : '正在打开子 Agent…');
+    if (b.dataset.part === 'open') list.scrollTop = list.scrollHeight;
+    return;
+  }
+  if (b.dataset.a === 'edit') return editQueued(b.dataset.q);
+  if (b.dataset.a === 'send' && !await ask('立即发送这条消息？\nAgent 当前这一轮会被打断。', '立即发送')) return;
+  if (b.dataset.a === 'remove' && !await ask('删除这条排队消息？', '删除')) return;
+  send({ t: 'queue', id: b.dataset.q, action: b.dataset.a });
+  status(b.dataset.a === 'send' ? '已立即发送这条排队消息' : '已删除这条排队消息');
+};
+
+function updateToBottom() {
+  $('toBottom').style.display = nearBottom() ? 'none' : 'block';
+}
+list.addEventListener('scroll', updateToBottom);
+$('toBottom').onclick = () => { list.scrollTop = list.scrollHeight; };
+$('older').onclick = () => send({ t: 'scrollChat', dy: -900 });
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button[data-item]');
+  const f = !b && e.target.closest('#items [data-file]');
+  if (f) return openFile(f.dataset.file);
+  if (!b) return;
+  if (RISKY.test(b.textContent.trim()) && !await ask(`确定要点「${b.textContent.trim()}」吗？`, b.textContent.trim())) return;
+  send({ t: 'click', item: b.dataset.item, n: Number(b.dataset.n) });
+  status('已点击：' + b.textContent);
+});
+
+$('pickMode').onclick = () => { status('读取模式列表…'); send({ t: 'openMenu', kind: 'mode' }); };
+$('pickModel').onclick = () => { status('读取模型列表…'); send({ t: 'openMenu', kind: 'model' }); };
+$('pickHistory').onclick = () => { status('读取历史对话…'); send({ t: 'openMenu', kind: 'history' }); };
+$('newChat').onclick = () => { send({ t: 'newChat' }); status('已新建对话'); };
+
+/* ---------- file viewer ---------- */
+$('vBody').classList.toggle('wrap', store.get('wrap') !== 'off');
+$('vWrap').classList.toggle('on', store.get('wrap') !== 'off');
+
+function openFile(ref) {
+  $('vName').textContent = ref.split('/').pop();
+  $('vPath').textContent = '';
+  $('vBody').innerHTML = '<div class="note">正在从电脑读取…</div>';
+  if (!$('viewer').classList.contains('open')) {
+    $('viewer').classList.add('open');
+    history.pushState({ viewer: true }, '');
+  }
+  send({ t: 'file', path: ref });
+}
+
+function showFile(m) {
+  if (!$('viewer').classList.contains('open') || m.loading) return;
+  $('vName').textContent = m.name || '';
+  // Leading LRM keeps the rtl ellipsis from reordering the path's slashes.
+  $('vPath').textContent = m.path ? '\u200e' + (m.host ? m.host + ':' : '') + m.path + (m.size != null ? ` · ${fmtSize(m.size)}` : '') : '';
+  const body = $('vBody');
+  if (m.error) {
+    body.innerHTML = `<div class="note err">${esc(m.error)}</div><div class="note">可以切到「画面」在 Cursor 里打开</div>`;
+    return;
+  }
+  if (m.image) {
+    body.innerHTML = '';
+    const img = new Image();
+    img.src = m.image;
+    body.append(img);
+    return;
+  }
+  const lines = m.text.replace(/\n$/, '').split('\n');
+  body.innerHTML = `<div class="code">${lines.map((l, n) =>
+    `<div class="l${n + 1 === m.line ? ' hl' : ''}"><i>${n + 1}</i>${esc(l) || ' '}</div>`).join('')}</div>`
+    + (m.truncated ? '<div class="note">文件太长，只显示了前 512 KB</div>' : '');
+  body.scrollTop = 0;
+  if (m.line) body.querySelector('.hl')?.scrollIntoView({ block: 'center' });
+}
+
+const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+
+function closeViewer() {
+  $('viewer').classList.remove('open');
+  $('vBody').innerHTML = '';
+}
+$('vClose').onclick = () => history.state?.viewer ? history.back() : closeViewer();
+window.addEventListener('popstate', () => { if ($('viewer').classList.contains('open')) closeViewer(); });
+$('vWrap').onclick = () => {
+  const on = !$('vBody').classList.contains('wrap');
+  $('vBody').classList.toggle('wrap', on);
+  $('vWrap').classList.toggle('on', on);
+  store.set('wrap', on ? null : 'off');
+};
+
+/* ---------- screen view ---------- */
+const view = $('view'), stage = $('stage'), screen = $('screen');
+
+function onFrame(m) {
+  const resized = m.w !== frame.w || m.h !== frame.h;
+  frame = { w: m.w, h: m.h };
+  screen.src = 'data:image/jpeg;base64,' + m.data;
+  layoutStage();
+  if (resized) applyQuality();
+}
+screen.onload = () => send({ t: 'ack' });
+
+const cropRect = () => crop && panel ? panel : [0, 0, frame.w, frame.h];
+
+function layoutStage() {
+  if (mode !== 'screen') return;
+  const [rx, ry, rw, rh] = cropRect();
+  const stageW = view.clientWidth * zoom;
+  const scale = stageW / rw;
+  stage.style.width = stageW + 'px';
+  stage.style.height = rh * scale + 'px';
+  screen.style.width = frame.w * scale + 'px';
+  screen.style.left = -rx * scale + 'px';
+  screen.style.top = -ry * scale + 'px';
+}
+
+let sentWidth = 0;
+function applyQuality() {
+  if (mode !== 'screen' || !authed) return;
+  const [, , rw] = cropRect();
+  const px = Math.min(2560, Math.round(view.clientWidth * zoom * devicePixelRatio * frame.w / rw));
+  if (Math.abs(px - sentWidth) < 40) return;
+  sentWidth = px;
+  send({ t: 'quality', quality: 70, maxWidth: px });
+}
+
+function setCrop(on) {
+  crop = on;
+  store.set('crop', on ? 'panel' : 'full');
+  $('cropPanel').classList.toggle('on', on);
+  $('cropFull').classList.toggle('on', !on);
+  layoutStage(); applyQuality();
+}
+$('cropPanel').onclick = () => setCrop(true);
+$('cropFull').onclick = () => setCrop(false);
+
+function norm(e) {
+  const r = screen.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height };
+}
+
+function ripple(e) {
+  const r = stage.getBoundingClientRect(), el = $('ripple');
+  el.style.left = (e.clientX - r.left) + 'px';
+  el.style.top = (e.clientY - r.top) + 'px';
+  el.style.transition = 'none'; el.style.opacity = 1;
+  requestAnimationFrame(() => { el.style.transition = 'opacity .4s'; el.style.opacity = 0; });
+}
+
+let down = null;
+screen.addEventListener('pointerdown', e => {
+  down = { x: e.clientX, y: e.clientY, t: Date.now(), lastY: e.clientY, lastX: e.clientX, moved: false };
+});
+screen.addEventListener('pointermove', e => {
+  if (!down) return;
+  if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 10) down.moved = true;
+  if (tapMode === 'scroll' && down.moved) {
+    const scale = frame.w / screen.getBoundingClientRect().width;
+    const dy = (down.lastY - e.clientY) * scale * 1.5, dx = (down.lastX - e.clientX) * scale * 1.5;
+    down.lastY = e.clientY; down.lastX = e.clientX;
+    const p = norm(down);
+    send({ t: 'wheel', x: p.x, y: p.y, dx, dy });
+  }
+});
+screen.addEventListener('pointerup', e => {
+  if (!down) return;
+  const longPress = Date.now() - down.t > 600;
+  if (!down.moved) {
+    const p = norm(e);
+    const button = rightNext || longPress ? 'right' : 'left';
+    rightNext = false; $('rightClick').classList.remove('on');
+    send({ t: 'tap', x: p.x, y: p.y, button });
+    ripple(e);
+  }
+  down = null;
+});
+screen.addEventListener('pointercancel', () => { down = null; });
+screen.addEventListener('contextmenu', e => e.preventDefault());
+
+function setTapMode(m) {
+  tapMode = m;
+  $('modeTap').classList.toggle('on', m === 'tap');
+  $('modeScroll').classList.toggle('on', m === 'scroll');
+  view.classList.toggle('scroll', m === 'scroll');
+}
+$('modeTap').onclick = () => setTapMode('tap');
+$('modeScroll').onclick = () => setTapMode('scroll');
+
+const ZOOMS = [1, 1.5, 2, 3];
+$('zoom').onclick = () => {
+  const cx = (view.scrollLeft + view.clientWidth / 2) / (view.scrollWidth || 1);
+  const cy = (view.scrollTop + view.clientHeight / 2) / (view.scrollHeight || 1);
+  zoom = ZOOMS[(ZOOMS.indexOf(zoom) + 1) % ZOOMS.length];
+  $('zoom').textContent = zoom + 'x';
+  layoutStage();
+  view.scrollLeft = cx * view.scrollWidth - view.clientWidth / 2;
+  view.scrollTop = cy * view.scrollHeight - view.clientHeight / 2;
+  applyQuality();
+};
+$('refresh').onclick = () => send({ t: 'refresh' });
+$('rightClick').onclick = () => { rightNext = !rightNext; $('rightClick').classList.toggle('on', rightNext); };
+document.querySelectorAll('[data-key]').forEach(b => b.onclick = () => send({ t: 'key', key: b.dataset.key }));
+
+/* ---------- composer ---------- */
+const text = $('text');
+function autosize() { text.style.height = 'auto'; text.style.height = text.scrollHeight + 'px'; }
+text.addEventListener('input', autosize);
+$('send').onclick = () => {
+  const v = text.value;
+  if (!v.trim()) return;
+  send({ t: 'send', text: v, submit: true });
+  text.value = ''; autosize();
+  if (mode === 'chat') list.scrollTop = list.scrollHeight;
+};
+
+/* ---------- voice input ---------- */
+// Android WebView has no Web Speech API, so the app uses the system recognizer through the bridge instead.
+document.body.classList.toggle('voice', store.get('voice') === 'on');
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognizer = null;
+const addVoiceText = s => {
+  text.value += (text.value && !/\s$/.test(text.value) && /^\w/.test(s) ? ' ' : '') + s;
+  autosize();
+};
+window.onVoice = s => { $('mic').classList.remove('on'); s ? (addVoiceText(s), status('')) : status('没听清，再试一次', false); };
+// Photos from phone cameras are several MB; shrink to something the model can read and the relay accepts.
+async function shrinkImage(file) {
+  if (/^image\/(png|jpeg|gif|webp)$/.test(file.type) && file.size < 600e3) return file;
+  const bmp = await createImageBitmap(file);
+  let side = 1600, q = 0.85, blob;
+  do {
+    const k = Math.min(1, side / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    blob = await new Promise(r => c.toBlob(r, 'image/jpeg', q));
+    side *= 0.75; q -= 0.1;
+  } while (blob.size > 1.5e6 && q > 0.4);
+  return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+}
+
+$('img').onclick = () => $('imgFile').click();
+$('imgFile').onchange = async () => {
+  const file = $('imgFile').files[0];
+  $('imgFile').value = '';
+  if (!file) return;
+  status('正在处理图片…');
+  try {
+    const img = await shrinkImage(file);
+    const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(img); });
+    send({ t: 'image', data: url.slice(url.indexOf(',') + 1), name: img.name, type: img.type });
+  } catch {
+    status('读不了这张图片，换一张试试', false);
+  }
+};
+
+$('mic').onclick = () => {
+  if (window.CursorRemoteApp?.voice) {
+    if (!window.CursorRemoteApp.voice(I18N.speech)) return status('手机上没有语音识别服务，可以用输入法键盘上的麦克风', false);
+    $('mic').classList.add('on');
+    return status('请说话…');
+  }
+  if (inApp) return status('更新安卓 App 后可用语音输入，也可以用输入法键盘上的麦克风', false);
+  if (!Recognition) return status('这个浏览器不支持语音识别，可以用输入法键盘上的麦克风', false);
+  if (recognizer) return recognizer.stop();
+  const before = text.value;
+  recognizer = new Recognition();
+  recognizer.lang = I18N.speech;
+  recognizer.interimResults = true;
+  recognizer.onresult = e => {
+    text.value = before;
+    addVoiceText([...e.results].map(r => r[0].transcript).join(''));
+  };
+  recognizer.onerror = e => status(
+    e.error === 'not-allowed' || e.error === 'service-not-allowed' ? '没有麦克风权限'
+      : e.error === 'network' ? '语音识别连不上服务器（国内网络常见），可以用输入法键盘上的麦克风'
+      : e.error === 'no-speech' ? '没听清，再试一次' : e.error, false);
+  recognizer.onend = () => { recognizer = null; $('mic').classList.remove('on'); };
+  recognizer.start();
+  $('mic').classList.add('on');
+  status('请说话…（再点一下结束）');
+};
+
+window.addEventListener('resize', () => { layoutStage(); applyQuality(); });
+if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+setCrop(crop);
+setMode(mode);
+boot();
+</script>
+</body>
+</html>
