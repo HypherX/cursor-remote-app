@@ -25,7 +25,7 @@ const I18N = (() => {
     '还没有找到电脑地址。': 'The computer\'s address isn\'t published yet.', '请在电脑上运行 npm run public 并保持窗口开着，约 1 分钟后点重试。': 'Run npm run public on the computer and keep that window open, then tap Retry in about a minute.',
     '电脑不在线：可能关机、睡眠，或服务刚重启（新地址约 1 分钟后生效）。会自动重试…': 'Computer offline: it may be off, asleep, or the service just restarted (a new address takes about a minute). Retrying automatically…',
     '这台设备已被移除，请重新配对': 'This device was removed. Please pair again.',
-    '切换 Cursor 窗口': 'Switch Cursor window', '没有找到窗口': 'No windows found', '本地': 'Local',
+    '切换 Cursor 窗口': 'Switch Cursor window', '切换面板': 'Switch panel', '没有找到窗口': 'No windows found', '没有找到这个面板': 'That panel was not found', '本地': 'Local',
     '「Agents」是 Cursor 专门跑 Agent 的窗口；其他是普通编辑器窗口（IDE 模式），SSH 远程窗口也在这里。': '"Agents" is Cursor\'s dedicated Agent window; the others are regular editor windows (IDE mode), including SSH remotes.',
     '选择模式': 'Mode', '选择模型': 'Model', '历史对话': 'Chat history', '菜单是空的，可能 Cursor 版本不同': 'The menu is empty; your Cursor version may differ',
     '更大上下文、更贵': 'Larger context, costs more', '参数': 'Params', '模型': 'Model', '改动会直接应用到电脑上 Cursor 的这个模型。': 'Changes apply directly to this model in Cursor on your computer.',
